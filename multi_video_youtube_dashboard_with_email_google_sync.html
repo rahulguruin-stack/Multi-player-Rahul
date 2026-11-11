@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-Video YouTube Dashboard</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Custom scrollbar for dark theme */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+        /* Dynamic Grid Layout Rules */
+        .grid-layout-1x1 { grid-template-columns: repeat(1, minmax(0, 1fr)); }
+        .grid-layout-2x2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .grid-layout-3x3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        .grid-layout-auto { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
+
+        @media (max-width: 768px) {
+            .grid-layout-2x2, .grid-layout-3x3 {
+                grid-template-columns: repeat(1, minmax(0, 1fr));
+            }
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col">
+
+    <!-- Header Navigation -->
+    <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur-md sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <!-- App Branding -->
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-red-600 to-rose-400 flex items-center justify-center shadow-lg shadow-red-500/20">
+                    <i class="fa-brands fa-youtube text-xl text-white"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg leading-tight bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">StreamGrid Sync</h1>
+                    <p class="text-xs text-slate-400">Multi-Stream Dashboard with Cloud Sync</p>
+                </div>
+            </div>
+
+            <!-- Stats / Auth Bar -->
+            <div class="flex items-center space-x-3">
+                <!-- Sync Status -->
+                <div id="sync-status" class="hidden sm:flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-slate-800/80 border border-slate-700/50 text-xs text-slate-400">
+                    <i class="fa-solid fa-cloud text-slate-500" id="sync-icon"></i>
+                    <span id="sync-text">Guest Mode</span>
+                </div>
+
+                <!-- Auth Buttons & Profile -->
+                <div id="auth-container" class="flex items-center space-x-2">
+                    <button id="open-auth-btn" class="px-3 py-1.5 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-semibold transition flex items-center space-x-1.5 shadow-md shadow-red-600/20">
+                        <i class="fa-solid fa-user"></i>
+                        <span>Sync with Email / Account</span>
+                    </button>
+                    <div id="user-profile" class="hidden flex items-center space-x-2">
+                        <span id="user-display-email" class="text-xs text-slate-300 font-medium max-w-[140px] truncate"></span>
+                        <button id="signout-btn" class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition" title="Sign Out">
+                            <i class="fa-solid fa-right-from-bracket"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+        <!-- Controls & Input Panel -->
+        <section class="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 sm:p-6 backdrop-blur-xl shadow-2xl space-y-4">
+            
+            <!-- URL Input Bar -->
+            <form id="add-video-form" class="flex flex-col sm:flex-row gap-3">
+                <div class="relative flex-1">
+                    <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
+                        <i class="fa-solid fa-link text-sm"></i>
+                    </div>
+                    <input 
+                        type="text" 
+                        id="video-url-input"
+                        placeholder="Paste YouTube Video URL or ID (e.g. https://www.youtube.com/watch?v=dQw4w9WgXcQ)" 
+                        class="w-full pl-10 pr-4 py-3 bg-slate-950/80 border border-slate-700/80 rounded-xl text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 transition-colors"
+                        required
+                    />
+                </div>
+                <button 
+                    type="submit" 
+                    class="px-6 py-3 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-medium text-sm rounded-xl transition-all duration-200 shadow-lg shadow-red-600/25 flex items-center justify-center space-x-2 shrink-0 active:scale-95"
+                >
+                    <i class="fa-solid fa-plus text-xs"></i>
+                    <span>Add Video</span>
+                </button>
+            </form>
+
+            <!-- Notification Banner -->
+            <div id="notification-box" class="hidden p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs flex items-center space-x-2">
+                <i class="fa-solid fa-circle-info"></i>
+                <span id="notification-msg"></span>
+            </div>
+
+            <!-- Master Action Toolbar -->
+            <div class="flex flex-wrap items-center justify-between gap-4 pt-2 border-t border-slate-800/80">
+                <!-- Master Controls -->
+                <div class="flex flex-wrap items-center gap-2">
+                    <button id="master-play" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-lg transition border border-slate-700/50 flex items-center space-x-1.5">
+                        <i class="fa-solid fa-play text-emerald-400 text-xs"></i>
+                        <span>Play All</span>
+                    </button>
+                    <button id="master-pause" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-lg transition border border-slate-700/50 flex items-center space-x-1.5">
+                        <i class="fa-solid fa-pause text-amber-400 text-xs"></i>
+                        <span>Pause All</span>
+                    </button>
+                    <button id="master-mute" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-lg transition border border-slate-700/50 flex items-center space-x-1.5">
+                        <i class="fa-solid fa-volume-xmark text-rose-400 text-xs"></i>
+                        <span>Mute All</span>
+                    </button>
+                    <button id="master-unmute" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-lg transition border border-slate-700/50 flex items-center space-x-1.5">
+                        <i class="fa-solid fa-volume-high text-sky-400 text-xs"></i>
+                        <span>Unmute All</span>
+                    </button>
+                    <button id="master-clear" class="px-3.5 py-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 text-xs font-semibold rounded-lg transition border border-rose-500/20 flex items-center space-x-1.5 ml-auto sm:ml-0">
+                        <i class="fa-solid fa-trash-can text-xs"></i>
+                        <span>Clear All</span>
+                    </button>
+                </div>
+
+                <!-- Layout Selector Switcher -->
+                <div class="flex items-center space-x-2">
+                    <span class="text-xs text-slate-400 font-medium">Layout:</span>
+                    <div class="bg-slate-950 p-1 rounded-lg border border-slate-800 flex items-center space-x-1">
+                        <button data-layout="auto" class="layout-btn active px-2.5 py-1 text-xs font-medium rounded-md text-slate-300 hover:text-white transition">Auto</button>
+                        <button data-layout="1x1" class="layout-btn px-2.5 py-1 text-xs font-medium rounded-md text-slate-400 hover:text-white transition">1x1</button>
+                        <button data-layout="2x2" class="layout-btn px-2.5 py-1 text-xs font-medium rounded-md text-slate-400 hover:text-white transition">2x2</button>
+                        <button data-layout="3x3" class="layout-btn px-2.5 py-1 text-xs font-medium rounded-md text-slate-400 hover:text-white transition">3x3</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Video Grid Container -->
+        <section id="video-grid" class="grid grid-layout-auto gap-6 transition-all duration-300">
+            <!-- Videos dynamically injected here -->
+        </section>
+
+        <!-- Empty State UI -->
+        <div id="empty-state" class="py-16 text-center border-2 border-dashed border-slate-800/80 rounded-2xl bg-slate-900/20">
+            <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-slate-800/60 flex items-center justify-center text-slate-500">
+                <i class="fa-solid fa-layer-group text-2xl"></i>
+            </div>
+            <h3 class="text-slate-300 font-semibold text-lg">No streams added yet</h3>
+            <p class="text-slate-500 text-xs max-w-sm mx-auto mt-1">Paste YouTube video URLs or Video IDs above to start syncing your dashboard.</p>
+        </div>
+
+    </main>
+
+    <!-- Auth Modal -->
+    <div id="auth-modal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center hidden p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 space-y-5 relative shadow-2xl">
+            <button id="close-modal-btn" class="absolute top-4 right-4 text-slate-500 hover:text-slate-300">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+            <div class="text-center space-y-1">
+                <h3 class="text-xl font-bold text-white">Sync Your Playlist</h3>
+                <p class="text-xs text-slate-400">Log in to save and sync your video layout across all devices.</p>
+            </div>
+
+            <!-- Email Form -->
+            <form id="email-auth-form" class="space-y-3">
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Email Address</label>
+                    <input type="email" id="auth-email" required placeholder="you@example.com" class="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-600 focus:outline-none focus:border-red-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Password</label>
+                    <input type="password" id="auth-password" required placeholder="••••••••" class="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-600 focus:outline-none focus:border-red-500">
+                </div>
+                
+                <div class="flex gap-2 pt-1">
+                    <button type="submit" id="signin-btn" class="flex-1 py-2.5 bg-red-600 hover:bg-red-500 text-white font-medium text-xs rounded-xl transition">Sign In</button>
+                    <button type="button" id="signup-btn" class="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium text-xs rounded-xl transition border border-slate-700">Create Account</button>
+                </div>
+            </form>
+
+            <div class="relative flex py-1 items-center">
+                <div class="flex-grow border-t border-slate-800"></div>
+                <span class="flex-shrink mx-3 text-[10px] text-slate-500 uppercase tracking-widest">or</span>
+                <div class="flex-grow border-t border-slate-800"></div>
+            </div>
+
+            <!-- Google OAuth Button -->
+            <button id="google-signin-btn" class="w-full py-2.5 bg-slate-800 hover:bg-slate-700/80 border border-slate-700 rounded-xl text-xs font-medium text-slate-200 flex items-center justify-center space-x-2 transition">
+                <i class="fa-brands fa-google text-red-400"></i>
+                <span>Continue with Google</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Official YouTube iFrame API Script -->
+    <script src="https://www.youtube.com/iframe_api"></script>
+
+    <!-- Firebase Script Module -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { 
+            getAuth, 
+            signInWithCustomToken, 
+            signInAnonymously, 
+            onAuthStateChanged,
+            signInWithEmailAndPassword,
+            createUserWithEmailAndPassword,
+            GoogleAuthProvider,
+            signInWithPopup,
+            signOut
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { 
+            getFirestore, 
+            doc, 
+            setDoc, 
+            onSnapshot 
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Global Firebase Setup
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'stream-grid-app';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
+            apiKey: "demo-key",
+            authDomain: "demo.firebaseapp.com",
+            projectId: "demo-project",
+            storageBucket: "demo.appspot.com",
+            messagingSenderId: "123456",
+            appId: "1:123456:web:demo"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // Application State
+        const players = new Map();
+        let videoList = [];
+        let currentUser = null;
+
+        // UI Element References
+        const form = document.getElementById('add-video-form');
+        const urlInput = document.getElementById('video-url-input');
+        const videoGrid = document.getElementById('video-grid');
+        const emptyState = document.getElementById('empty-state');
+        const streamCountEl = document.getElementById('stream-count');
+        const notificationBox = document.getElementById('notification-box');
+        const notificationMsg = document.getElementById('notification-msg');
+        const layoutBtns = document.querySelectorAll('.layout-btn');
+        
+        const syncText = document.getElementById('sync-text');
+        const syncIcon = document.getElementById('sync-icon');
+        const authModal = document.getElementById('auth-modal');
+        const openAuthBtn = document.getElementById('open-auth-btn');
+        const closeModalBtn = document.getElementById('close-modal-btn');
+        const emailAuthForm = document.getElementById('email-auth-form');
+        const signupBtn = document.getElementById('signup-btn');
+        const googleSigninBtn = document.getElementById('google-signin-btn');
+        const userProfile = document.getElementById('user-profile');
+        const userDisplayEmail = document.getElementById('user-display-email');
+        const signoutBtn = document.getElementById('signout-btn');
+
+        // Initial Auth Setup
+        async function initAuth() {
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (err) {
+                console.warn('Fallback anonymous auth:', err);
+                signInAnonymously(auth).catch(() => {});
+            }
+        }
+        initAuth();
+
+        // Listen for Auth State Changes & Sync Data
+        onAuthStateChanged(auth, (user) => {
+            currentUser = user;
+            if (user && !user.isAnonymous) {
+                userDisplayEmail.textContent = user.email || user.uid;
+                userProfile.classList.remove('hidden');
+                openAuthBtn.classList.add('hidden');
+                syncText.textContent = 'Cloud Synced';
+                syncIcon.className = 'fa-solid fa-cloud-check text-emerald-400';
+                
+                // Attach real-time cloud data sync
+                attachDocListener(user.uid);
+            } else {
+                userProfile.classList.add('hidden');
+                openAuthBtn.classList.remove('hidden');
+                syncText.textContent = 'Guest Mode';
+                syncIcon.className = 'fa-solid fa-cloud text-slate-500';
+            }
+        });
+
+        // Real-time Firestore Listener
+        function attachDocListener(userId) {
+            const userDocRef = doc(db, 'artifacts', appId, 'users', userId, 'dashboard', 'user_playlist');
+            onSnapshot(userDocRef, (snapshot) => {
+                if (snapshot.exists()) {
+                    const data = snapshot.data();
+                    if (data && Array.isArray(data.videos)) {
+                        syncLocalVideosWithCloud(data.videos);
+                    }
+                }
+            }, (error) => {
+                console.error("Firestore sync error:", error);
+            });
+        }
+
+        // Save current video state to Firestore
+        async function saveToCloud() {
+            if (!currentUser || currentUser.isAnonymous) return;
+            try {
+                syncIcon.className = 'fa-solid fa-rotate text-amber-400 animate-spin';
+                const userDocRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'dashboard', 'user_playlist');
+                await setDoc(userDocRef, {
+                    videos: videoList,
+                    updatedAt: new Date().toISOString()
+                }, { merge: true });
+                syncIcon.className = 'fa-solid fa-cloud-check text-emerald-400';
+            } catch (err) {
+                console.error("Cloud save failed:", err);
+                syncIcon.className = 'fa-solid fa-triangle-exclamation text-rose-400';
+            }
+        }
+
+        // Sync Video list received from cloud
+        function syncLocalVideosWithCloud(cloudVideos) {
+            const newIds = cloudVideos.map(v => v.id);
+            const currentIds = videoList.map(v => v.id);
+
+            // Remove deleted videos
+            videoList.forEach(v => {
+                if (!newIds.includes(v.id)) {
+                    removeVideoCard(v.cardId, false);
+                }
+            });
+
+            // Add newly added videos
+            cloudVideos.forEach(v => {
+                if (!currentIds.includes(v.id)) {
+                    addVideoCard(v.id, false);
+                }
+            });
+
+            videoList = cloudVideos;
+        }
+
+        // Helper: Extract YouTube Video ID
+        function extractVideoID(input) {
+            const trimmed = input.trim();
+            const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|shorts\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+            const match = trimmed.match(regExp);
+
+            if (match && match[2].length === 11) {
+                return match[2];
+            } else if (trimmed.length === 11 && !trimmed.includes('/')) {
+                return trimmed;
+            }
+            return null;
+        }
+
+        function showNotification(msg) {
+            notificationMsg.textContent = msg;
+            notificationBox.classList.remove('hidden');
+            setTimeout(() => {
+                notificationBox.classList.add('hidden');
+            }, 4000);
+        }
+
+        function updateUIState() {
+            const count = players.size;
+            if (emptyState) {
+                if (count === 0) emptyState.classList.remove('hidden');
+                else emptyState.classList.add('hidden');
+            }
+        }
+
+        // Add Video Card
+        function addVideoCard(videoId, triggerSave = true) {
+            const cardId = 'yt-player-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
+
+            const card = document.createElement('div');
+            card.id = 'card-' + cardId;
+            card.className = 'bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl flex flex-col group hover:border-slate-700 transition duration-300';
+            
+            card.innerHTML = `
+                <div class="relative w-full aspect-video bg-black">
+                    <div id="${cardId}" class="w-full h-full"></div>
+                </div>
+                <div class="p-3 bg-slate-900/90 border-t border-slate-800/80 flex items-center justify-between text-xs gap-2">
+                    <div class="flex items-center space-x-1.5">
+                        <button data-action="play" class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-emerald-400 transition" title="Play">
+                            <i class="fa-solid fa-play"></i>
+                        </button>
+                        <button data-action="pause" class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-400 transition" title="Pause">
+                            <i class="fa-solid fa-pause"></i>
+                        </button>
+                        <button data-action="toggle-mute" class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-sky-400 transition" title="Mute/Unmute">
+                            <i class="fa-solid fa-volume-high"></i>
+                        </button>
+                    </div>
+                    
+                    <div class="flex items-center space-x-2">
+                        <span class="text-[10px] text-slate-500 font-mono">ID: ${videoId}</span>
+                        <button data-action="remove" class="p-2 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 transition" title="Remove Video">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            videoGrid.appendChild(card);
+
+            if (window.YT && window.YT.Player) {
+                new YT.Player(cardId, {
+                    videoId: videoId,
+                    playerVars: { 'autoplay': 1, 'mute': 1, 'rel': 0, 'modestbranding': 1 },
+                    events: {
+                        'onReady': (event) => {
+                            players.set(cardId, { player: event.target, cardEl: card, videoId: videoId });
+                            updateUIState();
+                        }
+                    }
+                });
+            }
+
+            if (triggerSave) {
+                videoList.push({ id: videoId, cardId: cardId });
+                saveToCloud();
+            }
+
+            // Bind Card Events
+            card.querySelector('[data-action="play"]').addEventListener('click', () => {
+                const item = players.get(cardId);
+                if (item && item.player.playVideo) item.player.playVideo();
+            });
+
+            card.querySelector('[data-action="pause"]').addEventListener('click', () => {
+                const item = players.get(cardId);
+                if (item && item.player.pauseVideo) item.player.pauseVideo();
+            });
+
+            card.querySelector('[data-action="toggle-mute"]').addEventListener('click', (e) => {
+                const item = players.get(cardId);
+                if (item && item.player) {
+                    const btnIcon = e.currentTarget.querySelector('i');
+                    if (item.player.isMuted()) {
+                        item.player.unMute();
+                        btnIcon.className = 'fa-solid fa-volume-high';
+                    } else {
+                        item.player.mute();
+                        btnIcon.className = 'fa-solid fa-volume-xmark';
+                    }
+                }
+            });
+
+            card.querySelector('[data-action="remove"]').addEventListener('click', () => {
+                removeVideoCard(cardId, true);
+            });
+        }
+
+        // Remove Card
+        function removeVideoCard(cardId, triggerSave = true) {
+            const item = players.get(cardId);
+            if (item) {
+                if (item.player && item.player.destroy) item.player.destroy();
+                item.cardEl.remove();
+                players.delete(cardId);
+            }
+            if (triggerSave) {
+                videoList = videoList.filter(v => v.cardId !== cardId);
+                saveToCloud();
+            }
+            updateUIState();
+        }
+
+        // Modal Controls
+        openAuthBtn.addEventListener('click', () => authModal.classList.remove('hidden'));
+        closeModalBtn.addEventListener('click', () => authModal.classList.add('hidden'));
+
+        // Email Sign In
+        emailAuthForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('auth-email').value;
+            const password = document.getElementById('auth-password').value;
+            try {
+                await signInWithEmailAndPassword(auth, email, password);
+                authModal.classList.add('hidden');
+                showNotification("Successfully logged in!");
+            } catch (err) {
+                showNotification(err.message || "Auth Error");
+            }
+        });
+
+        // Email Sign Up
+        signupBtn.addEventListener('click', async () => {
+            const email = document.getElementById('auth-email').value;
+            const password = document.getElementById('auth-password').value;
+            if (!email || !password) {
+                showNotification("Please enter an email and password to sign up.");
+                return;
+            }
+            try {
+                await createUserWithEmailAndPassword(auth, email, password);
+                authModal.classList.add('hidden');
+                showNotification("Account created & synced!");
+            } catch (err) {
+                showNotification(err.message || "Signup Error");
+            }
+        });
+
+        // Google Sign In
+        googleSigninBtn.addEventListener('click', async () => {
+            const provider = new GoogleAuthProvider();
+            try {
+                await signInWithPopup(auth, provider);
+                authModal.classList.add('hidden');
+                showNotification("Logged in with Google!");
+            } catch (err) {
+                showNotification("Google Sign-in failed: " + err.message);
+            }
+        });
+
+        // Sign Out
+        signoutBtn.addEventListener('click', () => {
+            signOut(auth).then(() => {
+                showNotification("Signed out successfully.");
+            });
+        });
+
+        // Form Submit Handler
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const inputVal = urlInput.value;
+            const videoId = extractVideoID(inputVal);
+
+            if (videoId) {
+                addVideoCard(videoId, true);
+                urlInput.value = '';
+            } else {
+                showNotification('Invalid YouTube URL or Video ID.');
+            }
+        });
+
+        // Master Control Listeners
+        document.getElementById('master-play').addEventListener('click', () => {
+            players.forEach((item) => item.player?.playVideo?.());
+        });
+
+        document.getElementById('master-pause').addEventListener('click', () => {
+            players.forEach((item) => item.player?.pauseVideo?.());
+        });
+
+        document.getElementById('master-mute').addEventListener('click', () => {
+            players.forEach((item) => item.player?.mute?.());
+        });
+
+        document.getElementById('master-unmute').addEventListener('click', () => {
+            players.forEach((item) => item.player?.unMute?.());
+        });
+
+        document.getElementById('master-clear').addEventListener('click', () => {
+            const keys = Array.from(players.keys());
+            keys.forEach((key) => removeVideoCard(key, false));
+            videoList = [];
+            saveToCloud();
+        });
+
+        // Grid Layout Switcher
+        layoutBtns.forEach((btn) => {
+            btn.addEventListener('click', () => {
+                layoutBtns.forEach((b) => {
+                    b.classList.remove('bg-slate-800', 'text-white');
+                    b.classList.add('text-slate-400');
+                });
+                btn.classList.add('bg-slate-800', 'text-white');
+                btn.classList.remove('text-slate-400');
+
+                const layout = btn.getAttribute('data-layout');
+                videoGrid.className = `grid grid-layout-${layout} gap-6 transition-all duration-300`;
+            });
+        });
+    </script>
+</body>
+</html>
